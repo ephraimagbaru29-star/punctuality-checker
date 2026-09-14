@@ -1,7 +1,7 @@
 import { get } from 'svelte/store';
 import { authStore, logout } from '../stores/auth';
 
-const BASE = 'http://localhost:3000/api';
+const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3000') + '/api';
 
 const request = async (method, path, body = null, auth = true) => {
   const headers = { 'Content-Type': 'application/json' };
