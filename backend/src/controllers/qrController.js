@@ -1,4 +1,4 @@
-const bwipjs = require('bwip-js');
+const QRCode = require('qrcode');
 const supabase = require('../config/supabase');
 const { generateToken } = require('../utils/helpers');
 
@@ -30,14 +30,11 @@ const generateQR = async (req, res, next) => {
     // The QR code encodes the registration URL
     const registrationUrl = `${process.env.FRONTEND_URL}/register?token=${token}`;
 
-    // Generate QR PNG with bwip-js
-    const png = await bwipjs.toBuffer({
-      bcid: 'qrcode',
-      text: registrationUrl,
-      scale: 4,
-      height: 40,
-      includetext: false,
-      eclevel: 'M'
+    // Generate QR PNG with qrcode (pure JS, works on Vercel)
+    const qrImageBase64 = await QRCode.toDataURL(registrationUrl, {
+      width: 300,
+      margin: 2,
+      color: { dark: '#1a1a2e', light: '#ffffff' }
     });
 
     res.json({
@@ -48,7 +45,7 @@ const generateQR = async (req, res, next) => {
         registration_url: registrationUrl,
         expires_at: qrRecord.expires_at,
         created_at: qrRecord.created_at,
-        qr_image_base64: `data:image/png;base64,${png.toString('base64')}`
+        qr_image_base64: qrImageBase64
       }
     });
   } catch (err) {
