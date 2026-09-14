@@ -1,7 +1,7 @@
 // Check all requires load correctly
 const fs = require('fs');
 const errors = [];
-
+commit
 const files = [
   './src/config/supabase',
   './src/controllers/authController',
