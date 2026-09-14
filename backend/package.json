@@ -2,7 +2,7 @@
   "name": "punctuality-checker-backend",
   "version": "1.0.0",
   "description": "Backend API for Punctuality Checker clock-in system",
-  "main": "src/server.js",
+  "main": "api/index.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js"
