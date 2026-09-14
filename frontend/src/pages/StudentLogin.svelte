@@ -16,6 +16,14 @@
 
   const handleLogin = async () => {
     if (!clockInId || !password) { error = 'Please fill in all fields.'; return; }
+    
+    // Validate Clock-In ID format
+    const idPattern = /^PC-[A-Z0-9]{6}$/;
+    if (!idPattern.test(clockInId.trim().toUpperCase())) {
+      error = 'Invalid Clock-In ID format. It must start with PC- followed by 6 characters (e.g. PC-4F2A8B). Do NOT enter your email address.';
+      return;
+    }
+
     error = ''; loading = true;
     try {
       const device_fingerprint = await getDeviceFingerprint();
@@ -88,8 +96,8 @@
         <input id="cid" class="form-control" type="text" placeholder="e.g. PC-4F2A8B"
           bind:value={clockInId} on:keydown={handleKey}
           style="text-transform:uppercase; letter-spacing:.08em; font-weight:600;" />
-        <p style="font-size:var(--fs-xs);color:var(--gray-400);margin-top:4px;">
-          Your unique ID starting with PC- (given after admin approval)
+        <p style="font-size:var(--fs-xs);color:var(--danger);margin-top:4px;font-weight:600;">
+          ⚠️ Enter your Clock-In ID (format: PC-XXXXXX) — NOT your email address.
         </p>
       </div>
       <div class="form-group">
