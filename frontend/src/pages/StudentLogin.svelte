@@ -28,7 +28,7 @@
         return;
       }
       login(result.token, result.user);
-      navigate('/student/dashboard');
+      window.location.href = '/student/dashboard';
     } catch (e) {
       if (e.message?.includes('Device not recognized') || e.message?.includes('device_mismatch')) {
         showDeviceMismatch = true;

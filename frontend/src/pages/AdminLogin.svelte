@@ -21,7 +21,7 @@
         return;
       }
       login(result.token, result.user);
-      navigate('/admin/dashboard');
+      window.location.href = '/admin/dashboard';
     } catch (e) {
       error = e.message || 'Login failed. Please try again.';
     }

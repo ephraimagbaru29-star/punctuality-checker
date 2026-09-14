@@ -1,7 +1,7 @@
 import { get } from 'svelte/store';
 import { authStore, logout } from '../stores/auth';
 
-const BASE = '/api';
+const BASE = 'http://localhost:3000/api';
 
 const request = async (method, path, body = null, auth = true) => {
   const headers = { 'Content-Type': 'application/json' };
@@ -11,16 +11,25 @@ const request = async (method, path, body = null, auth = true) => {
     if (store?.token) headers['Authorization'] = `Bearer ${store.token}`;
   }
 
-  const opts = { method, headers };
+  const opts = { method, headers, signal: AbortSignal.timeout(10000) };
   if (body) opts.body = JSON.stringify(body);
 
-  const res = await fetch(`${BASE}${path}`, opts);
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, opts);
+  } catch (e) {
+    if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+      throw new Error('Request timed out. Make sure the backend is running on port 3000.');
+    }
+    throw new Error('Cannot connect to server. Make sure the backend is running.');
+  }
 
   // Read response text first, then parse — handles empty bodies gracefully
   const text = await res.text();
   const data = text ? JSON.parse(text) : {};
 
-  if (res.status === 401) {
+  // Only auto-redirect on 401 for authenticated requests, never for login endpoints
+  if (res.status === 401 && auth && !path.includes('/login') && !path.includes('/register')) {
     logout();
     window.location.href = '/login';
     return;

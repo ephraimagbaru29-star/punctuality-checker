@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [svelte()],
   server: {
     port: 5173,
-    host: true,
+    host: true, // expose to network
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
