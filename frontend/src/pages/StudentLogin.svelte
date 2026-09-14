@@ -4,9 +4,11 @@
   import { login, authStore } from '../stores/auth';
   import { getDeviceFingerprint } from '../lib/fingerprint';
   import { onMount } from 'svelte';
+  import QRScanner from '../components/QRScanner.svelte';
 
   let clockInId = '', password = '', error = '', loading = false;
   let showDeviceMismatch = false;
+  let showScanner = false;
 
   onMount(() => {
     if ($authStore?.user?.role === 'student') navigate('/student/dashboard');
@@ -40,6 +42,13 @@
   };
 
   const handleKey = (e) => { if (e.key === 'Enter') handleLogin(); };
+
+  // When QR scanner detects a valid token, redirect to register page
+  const handleScanned = (e) => {
+    showScanner = false;
+    const { token } = e.detail;
+    window.location.href = `/register?token=${token}`;
+  };
 </script>
 
 <div class="auth-page">
@@ -62,10 +71,6 @@
         <div class="mismatch-icon">🔒</div>
         <h3>Device Not Recognized</h3>
         <p>This account is locked to a different device. If you lost your device or are using a new one, request a device reset from admin.</p>
-        <a href="/student/dashboard" class="btn btn-primary btn-full mt-4"
-           on:click|preventDefault={() => { showDeviceMismatch = false; navigate('/student/dashboard'); }}>
-          Go to Dashboard to Request Reset
-        </a>
         <button class="btn btn-ghost btn-full mt-2" on:click={() => showDeviceMismatch = false}>
           Back to Login
         </button>
@@ -80,11 +85,11 @@
 
       <div class="form-group">
         <label class="form-label" for="cid">Clock-In ID</label>
-        <input id="cid" class="form-control" type="text" placeholder="e.g. PC-4F2A8B — check your approval email or ask admin"
+        <input id="cid" class="form-control" type="text" placeholder="e.g. PC-4F2A8B"
           bind:value={clockInId} on:keydown={handleKey}
           style="text-transform:uppercase; letter-spacing:.08em; font-weight:600;" />
         <p style="font-size:var(--fs-xs);color:var(--gray-400);margin-top:4px;">
-          ⚠️ This is your unique Clock-In ID (starts with PC-), not your email address.
+          Your unique ID starting with PC- (given after admin approval)
         </p>
       </div>
       <div class="form-group">
@@ -97,11 +102,28 @@
         {#if loading}<span class="spinner"></span>{:else}Sign In{/if}
       </button>
 
-      <p class="switch-link">Don't have an account? <a href="/register">Register with QR code</a></p>
+      <!-- QR Scan button -->
+      <button class="btn btn-secondary btn-full mt-4" on:click={() => showScanner = true}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/>
+          <path d="M14 14h3v3h-3zM17 17h3v3h-3zM14 20h3"/>
+        </svg>
+        Register with QR Code
+      </button>
+
       <p class="switch-link">Admin? <a href="/admin/login">Login here</a></p>
     {/if}
   </div>
 </div>
+
+<!-- QR Scanner Modal -->
+{#if showScanner}
+  <QRScanner
+    on:scanned={handleScanned}
+    on:close={() => showScanner = false}
+  />
+{/if}
 
 <style>
   .auth-page {
@@ -139,7 +161,6 @@
   h2 { font-size: var(--fs-2xl); margin-bottom: 4px; }
   .subtitle { color: var(--gray-500); font-size: var(--fs-sm); margin-bottom: 28px; }
   .switch-link { text-align: center; margin-top: 12px; font-size: var(--fs-sm); color: var(--gray-500); }
-
   .device-mismatch { text-align: center; }
   .mismatch-icon { font-size: 3rem; margin-bottom: 12px; }
   .device-mismatch h3 { color: var(--danger); margin-bottom: 12px; }
