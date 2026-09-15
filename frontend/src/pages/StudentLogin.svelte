@@ -9,6 +9,7 @@
   let clockInId = '', password = '', error = '', loading = false;
   let showDeviceMismatch = false;
   let showScanner = false;
+  let showPassword = false;
 
   // Device reset form
   let showResetForm = false;
@@ -181,8 +182,27 @@
       </div>
       <div class="form-group">
         <label class="form-label" for="pwd">Password</label>
-        <input id="pwd" class="form-control" type="password" placeholder="Enter password"
-          bind:value={password} on:keydown={handleKey} />
+        <div class="input-wrap">
+          <input id="pwd" class="form-control" type={showPassword ? 'text' : 'password'}
+            placeholder="Enter password" bind:value={password} on:keydown={handleKey} />
+          <button type="button" class="eye-btn" on:click={() => showPassword = !showPassword}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}>
+            {#if showPassword}
+              <!-- Eye Open -->
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            {:else}
+              <!-- Eye Closed -->
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            {/if}
+          </button>
+        </div>
       </div>
 
       <button class="btn btn-primary btn-full btn-lg" on:click={handleLogin} disabled={loading}>
@@ -278,4 +298,27 @@
   .device-mismatch p  { color: var(--gray-600); font-size: var(--fs-sm); line-height: 1.6; }
 
   textarea.form-control { resize: vertical; min-height: 80px; }
+
+  .input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .input-wrap .form-control {
+    padding-right: 44px;
+  }
+  .eye-btn {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--gray-400);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color var(--transition);
+  }
+  .eye-btn:hover { color: var(--accent); }
 </style>
