@@ -2,12 +2,16 @@ const router = require('express').Router();
 const { authenticate, requireStudent } = require('../middleware/auth');
 const {
   requestDeviceReset,
+  requestDeviceResetPublic,
   executeDeviceReset,
   getResetRequestStatus
 } = require('../controllers/deviceController');
 
 // Public route — student clicks link from email (no auth token needed)
 router.post('/reset', executeDeviceReset);
+
+// Public route — student requests reset from login page (no token needed)
+router.post('/reset-request/public', requestDeviceResetPublic);
 
 // Student-authenticated routes
 router.post('/reset-request', authenticate, requireStudent, requestDeviceReset);

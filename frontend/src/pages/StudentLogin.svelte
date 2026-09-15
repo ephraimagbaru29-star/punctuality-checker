@@ -1,6 +1,6 @@
 <script>
   import { navigate } from '../lib/navigate';
-  import { authApi } from '../lib/api';
+  import { authApi, deviceApi } from '../lib/api';
   import { login, authStore } from '../stores/auth';
   import { getDeviceFingerprint } from '../lib/fingerprint';
   import { onMount } from 'svelte';
@@ -10,17 +10,21 @@
   let showDeviceMismatch = false;
   let showScanner = false;
 
+  // Device reset form
+  let showResetForm = false;
+  let resetClockInId = '', resetEmail = '', resetReason = '';
+  let resetLoading = false, resetMsg = '', resetError = '';
+
   onMount(() => {
     if ($authStore?.user?.role === 'student') navigate('/student/dashboard');
   });
 
   const handleLogin = async () => {
     if (!clockInId || !password) { error = 'Please fill in all fields.'; return; }
-    
-    // Validate Clock-In ID format
+
     const idPattern = /^PC-[A-Z0-9]{6}$/;
     if (!idPattern.test(clockInId.trim().toUpperCase())) {
-      error = 'Invalid Clock-In ID format. It must start with PC- followed by 6 characters (e.g. PC-4F2A8B). Do NOT enter your email address.';
+      error = 'Invalid Clock-In ID. It must be in the format PC-XXXXXX (e.g. PC-4F2A8B).';
       return;
     }
 
@@ -51,11 +55,39 @@
 
   const handleKey = (e) => { if (e.key === 'Enter') handleLogin(); };
 
-  // When QR scanner detects a valid token, redirect to register page
   const handleScanned = (e) => {
     showScanner = false;
     const { token } = e.detail;
     window.location.href = `/register?token=${token}`;
+  };
+
+  const openResetForm = () => {
+    showResetForm = true;
+    showDeviceMismatch = false;
+    resetClockInId = clockInId || '';
+    resetEmail = '';
+    resetReason = '';
+    resetMsg = '';
+    resetError = '';
+  };
+
+  const submitResetRequest = async () => {
+    if (!resetClockInId || !resetEmail || !resetReason) {
+      resetError = 'Please fill in all fields.';
+      return;
+    }
+    resetLoading = true; resetError = ''; resetMsg = '';
+    try {
+      const result = await deviceApi.requestResetPublic({
+        clock_in_id: resetClockInId.trim().toUpperCase(),
+        email: resetEmail.trim(),
+        reason: resetReason
+      });
+      resetMsg = result.message;
+    } catch (e) {
+      resetError = e.message || 'Request failed. Please try again.';
+    }
+    resetLoading = false;
   };
 </script>
 
@@ -74,15 +106,62 @@
       </div>
     </div>
 
-    {#if showDeviceMismatch}
+    <!-- ── DEVICE RESET FORM ── -->
+    {#if showResetForm}
+      <h2>Request Device Reset</h2>
+      <p class="subtitle">Fill in your details and admin will send a reset link to your email.</p>
+
+      {#if resetMsg}
+        <div class="alert alert-success">{resetMsg}</div>
+        <button class="btn btn-ghost btn-full mt-4" on:click={() => { showResetForm = false; }}>
+          Back to Login
+        </button>
+      {:else}
+        {#if resetError}
+          <div class="alert alert-error">{resetError}</div>
+        {/if}
+
+        <div class="form-group">
+          <label class="form-label" for="rid">Clock-In ID</label>
+          <input id="rid" class="form-control" type="text" placeholder="e.g. PC-4F2A8B"
+            bind:value={resetClockInId}
+            style="text-transform:uppercase; letter-spacing:.08em; font-weight:600;" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="remail">Email Address</label>
+          <input id="remail" class="form-control" type="email" placeholder="your@email.com"
+            bind:value={resetEmail} />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="rreason">Reason for Reset</label>
+          <textarea id="rreason" class="form-control" rows="3"
+            placeholder="e.g. I got a new phone / My device was stolen..."
+            bind:value={resetReason}></textarea>
+        </div>
+
+        <button class="btn btn-primary btn-full btn-lg" on:click={submitResetRequest} disabled={resetLoading}>
+          {#if resetLoading}<span class="spinner"></span>{:else}Submit Reset Request{/if}
+        </button>
+        <button class="btn btn-ghost btn-full mt-2" on:click={() => showResetForm = false}>
+          Back to Login
+        </button>
+      {/if}
+
+    <!-- ── DEVICE MISMATCH ── -->
+    {:else if showDeviceMismatch}
       <div class="device-mismatch">
         <div class="mismatch-icon">🔒</div>
         <h3>Device Not Recognized</h3>
-        <p>This account is locked to a different device. If you lost your device or are using a new one, request a device reset from admin.</p>
+        <p>This account is locked to a different device. Request a reset and admin will send a link to your email to unlock your account.</p>
+        <button class="btn btn-primary btn-full mt-4" on:click={openResetForm}>
+          Request Device Reset
+        </button>
         <button class="btn btn-ghost btn-full mt-2" on:click={() => showDeviceMismatch = false}>
           Back to Login
         </button>
       </div>
+
+    <!-- ── NORMAL LOGIN ── -->
     {:else}
       <h2>Welcome back</h2>
       <p class="subtitle">Enter your Clock-In ID and password</p>
@@ -96,8 +175,8 @@
         <input id="cid" class="form-control" type="text" placeholder="e.g. PC-4F2A8B"
           bind:value={clockInId} on:keydown={handleKey}
           style="text-transform:uppercase; letter-spacing:.08em; font-weight:600;" />
-        <p style="font-size:var(--fs-xs);color:var(--danger);margin-top:4px;font-weight:600;">
-          ⚠️ Enter your Clock-In ID (format: PC-XXXXXX) — NOT your email address.
+        <p style="font-size:var(--fs-xs);color:var(--gray-400);margin-top:4px;">
+          Your unique ID starting with PC- (given after admin approval)
         </p>
       </div>
       <div class="form-group">
@@ -119,6 +198,11 @@
         </svg>
         Register with QR Code
       </button>
+
+      <!-- Device Reset link -->
+      <p class="reset-link">
+        Changed device? <button class="link-btn" on:click={openResetForm}>Request Device Reset</button>
+      </p>
 
       <p class="switch-link">Admin? <a href="/admin/login">Login here</a></p>
     {/if}
@@ -169,8 +253,29 @@
   h2 { font-size: var(--fs-2xl); margin-bottom: 4px; }
   .subtitle { color: var(--gray-500); font-size: var(--fs-sm); margin-bottom: 28px; }
   .switch-link { text-align: center; margin-top: 12px; font-size: var(--fs-sm); color: var(--gray-500); }
-  .device-mismatch { text-align: center; }
+
+  .reset-link {
+    text-align: center;
+    margin-top: 12px;
+    font-size: var(--fs-sm);
+    color: var(--gray-500);
+  }
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: var(--fs-sm);
+    font-family: var(--font);
+    padding: 0;
+    text-decoration: underline;
+  }
+  .link-btn:hover { color: var(--accent-dark); }
+
+  .device-mismatch { text-align: center; padding: 8px 0; }
   .mismatch-icon { font-size: 3rem; margin-bottom: 12px; }
   .device-mismatch h3 { color: var(--danger); margin-bottom: 12px; }
   .device-mismatch p  { color: var(--gray-600); font-size: var(--fs-sm); line-height: 1.6; }
+
+  textarea.form-control { resize: vertical; min-height: 80px; }
 </style>

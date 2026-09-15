@@ -1,6 +1,61 @@
 const supabase = require('../config/supabase');
 
-// POST /api/device/reset-request  — student requests device reset
+// POST /api/device/reset-request/public — student requests reset from login page (no auth needed)
+const requestDeviceResetPublic = async (req, res, next) => {
+  try {
+    const { clock_in_id, email, reason } = req.body;
+
+    if (!clock_in_id || !email || !reason) {
+      return res.status(400).json({ error: 'Clock-In ID, email and reason are required.' });
+    }
+
+    // Find the student by clock_in_id and email
+    const { data: student, error } = await supabase
+      .from('students')
+      .select('id, full_name, email, clock_in_id, status')
+      .eq('clock_in_id', clock_in_id.toUpperCase().trim())
+      .eq('email', email.toLowerCase().trim())
+      .single();
+
+    if (error || !student) {
+      return res.status(404).json({ error: 'No account found with that Clock-In ID and email combination.' });
+    }
+
+    if (student.status === 'suspended') {
+      return res.status(403).json({ error: 'Your account is suspended. Contact admin.' });
+    }
+
+    // Check for existing pending request
+    const { data: existing } = await supabase
+      .from('device_reset_requests')
+      .select('id')
+      .eq('student_id', student.id)
+      .eq('status', 'pending')
+      .single();
+
+    if (existing) {
+      return res.status(400).json({
+        error: 'You already have a pending device reset request. Please wait for admin response.'
+      });
+    }
+
+    const { data, error: insertError } = await supabase
+      .from('device_reset_requests')
+      .insert({ student_id: student.id, reason })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    res.status(201).json({
+      message: `Reset request submitted for ${student.full_name}. Admin will review and send a reset link to ${student.email}.`
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/device/reset-request  — student requests device reset (authenticated)
 const requestDeviceReset = async (req, res, next) => {
   try {
     const studentId = req.user.id;
@@ -123,4 +178,4 @@ const getResetRequestStatus = async (req, res, next) => {
   }
 };
 
-module.exports = { requestDeviceReset, executeDeviceReset, getResetRequestStatus };
+module.exports = { requestDeviceReset, requestDeviceResetPublic, executeDeviceReset, getResetRequestStatus };

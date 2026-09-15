@@ -97,7 +97,8 @@ export const studentApi = {
 
 // ── Device ────────────────────────────────────────
 export const deviceApi = {
-  requestReset:    (body) => api.post('/device/reset-request', body),
-  executeReset:    (body) => api.post('/device/reset', body, false),
-  resetStatus:     ()     => api.get('/device/reset-request/status'),
+  requestReset:       (body) => api.post('/device/reset-request', body),
+  requestResetPublic: (body) => api.post('/device/reset-request/public', body, false),
+  executeReset:       (body) => api.post('/device/reset', body, false),
+  resetStatus:        ()     => api.get('/device/reset-request/status'),
 };
