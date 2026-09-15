@@ -4,17 +4,17 @@
   import { login, authStore } from '../stores/auth';
   import { onMount } from 'svelte';
 
-  let email = '', password = '', error = '', loading = false;
+  let email = '', error = '', loading = false;
 
   onMount(() => {
     if ($authStore?.user?.role === 'admin') navigate('/admin/dashboard');
   });
 
   const handleLogin = async () => {
-    if (!email || !password) { error = 'Please fill in all fields.'; return; }
+    if (!email) { error = 'Please enter your email address.'; return; }
     error = ''; loading = true;
     try {
-      const result = await authApi.adminLogin({ email, password });
+      const result = await authApi.adminLogin({ email, password: '' });
       if (!result || !result.token) {
         error = 'Login failed. Please try again.';
         loading = false;
@@ -47,7 +47,7 @@
     </div>
 
     <h2>Welcome back</h2>
-    <p class="subtitle">Sign in to your admin account</p>
+    <p class="subtitle">Enter your admin email to sign in</p>
 
     {#if error}
       <div class="alert alert-error">{error}</div>
@@ -56,12 +56,7 @@
     <div class="form-group">
       <label class="form-label" for="email">Email Address</label>
       <input id="email" class="form-control" type="email" placeholder="admin@example.com"
-        bind:value={email} on:keydown={handleKey} />
-    </div>
-    <div class="form-group">
-      <label class="form-label" for="password">Password</label>
-      <input id="password" class="form-control" type="password" placeholder="Enter password"
-        bind:value={password} on:keydown={handleKey} />
+        bind:value={email} on:keydown={handleKey} autofocus />
     </div>
 
     <button class="btn btn-primary btn-full btn-lg" on:click={handleLogin} disabled={loading}>

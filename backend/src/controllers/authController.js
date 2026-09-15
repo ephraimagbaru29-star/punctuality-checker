@@ -12,9 +12,9 @@ const signToken = (payload) => {
 // POST /api/auth/admin/login
 const adminLogin = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
     }
 
     const { data: admin, error } = await supabase
@@ -24,11 +24,8 @@ const adminLogin = async (req, res, next) => {
       .single();
 
     if (error || !admin) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'No admin account found with that email.' });
     }
-
-    const valid = await bcrypt.compare(password, admin.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
     const token = signToken({ id: admin.id, role: 'admin', email: admin.email });
     res.json({
