@@ -82,10 +82,16 @@
     try {
       const fingerprint = await getDeviceFingerprint();
       let locData = {};
+
+      // Location is required for geofence check
       try {
         const loc = await getLocationWithAddress();
         locData = { location_lat: loc.lat, location_lng: loc.lng, location_address: loc.address };
-      } catch { /* location optional */ }
+      } catch (locErr) {
+        error = '📍 Location access is required to clock in. Please enable location permissions in your browser and try again.';
+        clockLoading = false;
+        return;
+      }
 
       const data = await attendanceApi.clockIn({
         device_fingerprint: fingerprint,
@@ -93,7 +99,13 @@
       });
       todayRecord = data.attendance;
       successMsg = data.message;
-    } catch (e) { error = e.message; }
+    } catch (e) {
+      if (e.message?.includes('outside the authorized')) {
+        error = '📍 ' + e.message;
+      } else {
+        error = e.message;
+      }
+    }
     clockLoading = false;
   };
 
@@ -254,6 +266,7 @@
 
     <div class="info-notice">
       <p>🕘 Clock-in opens at <strong>9:00 AM</strong> · 🕔 Clock-out time is <strong>5:00 PM</strong></p>
+      <p style="margin-top:4px;">📍 You must be at the <strong>authorized location</strong> to clock in.</p>
     </div>
 
     <!-- Device Reset Request -->

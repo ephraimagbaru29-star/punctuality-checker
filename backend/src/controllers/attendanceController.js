@@ -1,5 +1,5 @@
 const supabase = require('../config/supabase');
-const { todayDate, isBeforeClockIn, isBeforeClockOut } = require('../utils/helpers');
+const { todayDate, isBeforeClockIn, isBeforeClockOut, checkGeofence } = require('../utils/helpers');
 
 // POST /api/attendance/clock-in
 const clockIn = async (req, res, next) => {
@@ -30,6 +30,22 @@ const clockIn = async (req, res, next) => {
     const ip = req.ip || req.connection.remoteAddress;
     const deviceFingerprint = req.body.device_fingerprint || '';
     const { location_lat, location_lng, location_address } = req.body;
+
+    // ── GEOFENCE CHECK ──
+    if (location_lat == null || location_lng == null) {
+      return res.status(400).json({
+        error: 'Location is required to clock in. Please allow location access and try again.'
+      });
+    }
+
+    const geo = checkGeofence(parseFloat(location_lat), parseFloat(location_lng));
+    if (!geo.allowed) {
+      return res.status(403).json({
+        error: `You are outside the authorized clock-in location. You are ${geo.distance} meters away from the allowed area.`,
+        distance: geo.distance,
+        outside_geofence: true
+      });
+    }
 
     const now = new Date().toISOString();
 
