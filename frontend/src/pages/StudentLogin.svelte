@@ -183,8 +183,13 @@
       <div class="form-group">
         <label class="form-label" for="pwd">Password</label>
         <div class="input-wrap">
-          <input id="pwd" class="form-control" type={showPassword ? 'text' : 'password'}
-            placeholder="Enter password" bind:value={password} on:keydown={handleKey} />
+          {#if showPassword}
+            <input id="pwd" class="form-control" type="text"
+              placeholder="Enter password" bind:value={password} on:keydown={handleKey} />
+          {:else}
+            <input id="pwd" class="form-control" type="password"
+              placeholder="Enter password" bind:value={password} on:keydown={handleKey} />
+          {/if}
           <button type="button" class="eye-btn" on:click={() => showPassword = !showPassword}
             aria-label={showPassword ? 'Hide password' : 'Show password'}>
             {#if showPassword}
