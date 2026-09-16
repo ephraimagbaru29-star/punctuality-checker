@@ -1,5 +1,5 @@
 const supabase = require('../config/supabase');
-const { sendDeviceResetEmail } = require('../utils/mailer');
+const { sendDeviceResetEmail, sendApprovalEmail, sendUnsuspendEmail } = require('../utils/mailer');
 const { generateToken } = require('../utils/helpers');
 
 // GET /api/admin/students  — list all students with filters
@@ -59,6 +59,13 @@ const approveStudent = async (req, res, next) => {
       type: 'system'
     });
 
+    // Send approval email with Clock-In ID
+    try {
+      await sendApprovalEmail(data.email, data.full_name, data.clock_in_id);
+    } catch (emailErr) {
+      console.error('Failed to send approval email:', emailErr.message);
+    }
+
     res.json({ message: 'Student approved successfully', student: data });
   } catch (err) {
     next(err);
@@ -111,6 +118,13 @@ const unsuspendStudent = async (req, res, next) => {
       message: 'Your account suspension has been lifted. You can now log in normally.',
       type: 'system'
     });
+
+    // Send unsuspend email
+    try {
+      await sendUnsuspendEmail(data.email, data.full_name);
+    } catch (emailErr) {
+      console.error('Failed to send unsuspend email:', emailErr.message);
+    }
 
     res.json({ message: 'Student unsuspended', student: data });
   } catch (err) {

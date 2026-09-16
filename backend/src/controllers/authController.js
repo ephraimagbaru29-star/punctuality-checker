@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const supabase = require('../config/supabase');
 const { generateClockInId } = require('../utils/helpers');
+const { sendRegistrationEmail } = require('../utils/mailer');
 
 const signToken = (payload) => {
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -147,6 +148,13 @@ const studentRegister = async (req, res, next) => {
       .single();
 
     if (insertError) throw insertError;
+
+    // Send registration email with Clock-In ID
+    try {
+      await sendRegistrationEmail(student.email, student.full_name, student.clock_in_id);
+    } catch (emailErr) {
+      console.error('Failed to send registration email:', emailErr.message);
+    }
 
     res.status(201).json({
       message: 'Registration successful. Awaiting admin approval.',

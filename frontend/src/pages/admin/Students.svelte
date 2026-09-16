@@ -130,13 +130,19 @@
               <td>
                 <div class="actions">
                   {#if s.status === 'pending'}
-                    <button class="btn btn-success btn-sm" on:click={() => openConfirm('approve', s)}>Approve</button>
+                    <button class="btn btn-success btn-sm" on:click={() => openConfirm('approve', s)}>
+                      ✅ Approve
+                    </button>
                   {/if}
                   {#if s.status === 'active'}
-                    <button class="btn btn-danger btn-sm" on:click={() => openConfirm('suspend', s)}>Suspend</button>
+                    <button class="btn btn-danger btn-sm" on:click={() => openConfirm('suspend', s)}>
+                      🚫 Suspend
+                    </button>
                   {/if}
                   {#if s.status === 'suspended'}
-                    <button class="btn btn-warning btn-sm" on:click={() => openConfirm('unsuspend', s)}>Unsuspend</button>
+                    <button class="btn btn-success btn-sm" on:click={() => openConfirm('unsuspend', s)}>
+                      ✅ Activate
+                    </button>
                   {/if}
                 </div>
               </td>
@@ -154,14 +160,17 @@
   <div class="modal-overlay" on:click|self={closeConfirm}>
     <div class="modal">
       <h3 class="modal-title">
-        {#if confirmAction.type === 'approve'}Approve Student
-        {:else if confirmAction.type === 'suspend'}Suspend Student
-        {:else}Unsuspend Student{/if}
+        {#if confirmAction.type === 'approve'}✅ Approve Student
+        {:else if confirmAction.type === 'suspend'}🚫 Suspend Student
+        {:else}✅ Activate Student{/if}
       </h3>
       <p class="modal-subtitle">
-        {#if confirmAction.type === 'approve'}Approve <strong>{confirmAction.student.full_name}</strong> and allow them to clock in?
-        {:else if confirmAction.type === 'suspend'}Suspend <strong>{confirmAction.student.full_name}</strong>? They won't be able to clock in.
-        {:else}Lift suspension for <strong>{confirmAction.student.full_name}</strong>?
+        {#if confirmAction.type === 'approve'}
+          Approve <strong>{confirmAction.student.full_name}</strong> and allow them to clock in? An approval email will be sent to them.
+        {:else if confirmAction.type === 'suspend'}
+          Suspend <strong>{confirmAction.student.full_name}</strong>? They won't be able to clock in until reactivated.
+        {:else}
+          Reactivate <strong>{confirmAction.student.full_name}</strong>'s account? They will be able to clock in again and an email will be sent to notify them.
         {/if}
       </p>
 
@@ -179,9 +188,13 @@
 
       <div class="modal-footer">
         <button class="btn btn-ghost" on:click={closeConfirm}>Cancel</button>
-        <button class="btn {confirmAction.type === 'approve' ? 'btn-success' : confirmAction.type === 'suspend' ? 'btn-danger' : 'btn-warning'}"
+        <button class="btn {confirmAction.type === 'approve' || confirmAction.type === 'unsuspend' ? 'btn-success' : 'btn-danger'}"
           on:click={doAction} disabled={actionLoading}>
-          {#if actionLoading}<span class="spinner"></span>{:else}Confirm{/if}
+          {#if actionLoading}<span class="spinner"></span>
+          {:else if confirmAction.type === 'approve'}Approve
+          {:else if confirmAction.type === 'suspend'}Suspend
+          {:else}Activate Account
+          {/if}
         </button>
       </div>
     </div>
