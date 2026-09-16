@@ -122,14 +122,27 @@ const executeDeviceReset = async (req, res, next) => {
     const ip = req.ip || req.connection.remoteAddress;
     const ua = req.headers['user-agent'] || '';
 
-    // Clear old device and set new device
+    // Clear old device
     await supabase
       .from('student_devices')
       .delete()
       .eq('student_id', studentId);
 
-    // Insert new device record
+    // Check new device isn't already locked to another account
     if (device_fingerprint) {
+      const { data: otherDevice } = await supabase
+        .from('student_devices')
+        .select('student_id')
+        .eq('device_fingerprint', device_fingerprint)
+        .single();
+
+      if (otherDevice && otherDevice.student_id !== studentId) {
+        return res.status(409).json({
+          error: 'This device is already registered to another account. One device can only be used for one account.'
+        });
+      }
+
+      // Lock to new device
       await supabase.from('student_devices').insert({
         student_id: studentId,
         ip_address: ip,

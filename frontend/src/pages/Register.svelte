@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { navigate } from '../lib/navigate';
   import { authApi, qrApi } from '../lib/api';
+  import { getDeviceFingerprint } from '../lib/fingerprint';
 
   // Parse QR token from URL
   const params = new URLSearchParams(window.location.search);
@@ -65,7 +66,8 @@
         phone,
         password,
         qr_token: qrToken,
-        profile_picture: profilePicture
+        profile_picture: profilePicture,
+        device_fingerprint: await getDeviceFingerprint()
       });
 
       step = 'success';

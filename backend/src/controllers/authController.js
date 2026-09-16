@@ -38,7 +38,7 @@ const adminLogin = async (req, res, next) => {
   }
 };
 
-// POST /api/auth/admin/register  (first-time setup — can be locked after first admin created)
+// POST /api/auth/admin/register
 const adminRegister = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
@@ -46,13 +46,11 @@ const adminRegister = async (req, res, next) => {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
-    // Check if any admin exists (only allow first admin or authenticated admin)
     const { count } = await supabase
       .from('admins')
       .select('*', { count: 'exact', head: true });
 
     if (count > 0) {
-      // Only existing admins can create new admins
       const authHeader = req.headers.authorization;
       if (!authHeader) {
         return res.status(403).json({ error: 'Admin already exists. Must be authenticated to create another admin.' });
@@ -81,13 +79,10 @@ const adminRegister = async (req, res, next) => {
   }
 };
 
-// POST /api/auth/student/register  (requires valid QR token)
+// POST /api/auth/student/register
 const studentRegister = async (req, res, next) => {
   try {
-    const {
-      full_name, email, phone, password,
-      qr_token, profile_picture
-    } = req.body;
+    const { full_name, email, phone, password, qr_token, profile_picture, device_fingerprint } = req.body;
 
     if (!full_name || !email || !password || !qr_token) {
       return res.status(400).json({ error: 'Name, email, password and QR token are required' });
@@ -110,13 +105,29 @@ const studentRegister = async (req, res, next) => {
     }
 
     // Check email not already used
-    const { data: existing } = await supabase
+    const { data: existingEmail } = await supabase
       .from('students')
       .select('id')
       .eq('email', email.toLowerCase().trim())
       .single();
 
-    if (existing) return res.status(409).json({ error: 'Email already registered' });
+    if (existingEmail) return res.status(409).json({ error: 'Email already registered' });
+
+    // ── STRICT DEVICE CHECK ──
+    // Check if this device fingerprint is already registered to another student
+    if (device_fingerprint) {
+      const { data: existingDevice } = await supabase
+        .from('student_devices')
+        .select('student_id, students(full_name, clock_in_id)')
+        .eq('device_fingerprint', device_fingerprint)
+        .single();
+
+      if (existingDevice) {
+        return res.status(409).json({
+          error: 'This device is already registered to another account. One device can only be used for one account.'
+        });
+      }
+    }
 
     // Generate unique clock-in ID
     let clockInId;
@@ -149,6 +160,18 @@ const studentRegister = async (req, res, next) => {
 
     if (insertError) throw insertError;
 
+    // Lock device immediately at registration if fingerprint provided
+    if (device_fingerprint) {
+      const ip = req.ip || req.connection.remoteAddress;
+      const ua = req.headers['user-agent'] || '';
+      await supabase.from('student_devices').insert({
+        student_id: student.id,
+        ip_address: ip,
+        device_fingerprint,
+        user_agent: ua
+      });
+    }
+
     // Send registration email with Clock-In ID
     try {
       await sendRegistrationEmail(student.email, student.full_name, student.clock_in_id);
@@ -174,7 +197,8 @@ const studentRegister = async (req, res, next) => {
 // POST /api/auth/student/login
 const studentLogin = async (req, res, next) => {
   try {
-    const { clock_in_id, password } = req.body;
+    const { clock_in_id, password, device_fingerprint } = req.body;
+
     if (!clock_in_id || !password) {
       return res.status(400).json({ error: 'Clock-in ID and password are required' });
     }
@@ -199,31 +223,44 @@ const studentLogin = async (req, res, next) => {
     const valid = await bcrypt.compare(password, student.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid Clock-in ID or password' });
 
-    // Get device info from request
     const ip = req.ip || req.connection.remoteAddress;
     const ua = req.headers['user-agent'] || '';
-    const incomingFingerprint = req.body.device_fingerprint || '';
+    const incomingFingerprint = device_fingerprint || '';
 
-    // Check if device is locked
-    const { data: device } = await supabase
+    // Get locked device for this student
+    const { data: lockedDevice } = await supabase
       .from('student_devices')
       .select('*')
       .eq('student_id', student.id)
       .single();
 
-    if (device) {
-      // Compare stored fingerprint
-      if (
-        device.ip_address !== ip ||
-        device.device_fingerprint !== incomingFingerprint
-      ) {
+    if (lockedDevice) {
+      // ── STRICT DEVICE CHECK ──
+      // Fingerprint must match exactly
+      if (lockedDevice.device_fingerprint !== incomingFingerprint) {
         return res.status(403).json({
-          error: 'Device not recognized. If you changed devices, request a device reset.',
+          error: 'This account is locked to a different device. Request a device reset from the login page.',
           device_mismatch: true
         });
       }
     } else {
-      // First login — lock the device
+      // ── FIRST LOGIN ──
+      // Check this device isn't already used by another account
+      if (incomingFingerprint) {
+        const { data: otherDevice } = await supabase
+          .from('student_devices')
+          .select('student_id')
+          .eq('device_fingerprint', incomingFingerprint)
+          .single();
+
+        if (otherDevice && otherDevice.student_id !== student.id) {
+          return res.status(409).json({
+            error: 'This device is already registered to another account. One device can only be used for one account.'
+          });
+        }
+      }
+
+      // Lock this device to the student
       await supabase.from('student_devices').insert({
         student_id: student.id,
         ip_address: ip,
